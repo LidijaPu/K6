@@ -12,7 +12,7 @@ library(ggplot2)   # priklausomo kintamojo histograma
 # ---------------------------------------------------------------------
 # 0. Duomenų nuskaitymas ir paruošimas
 # ---------------------------------------------------------------------
-duom <- read.csv("vw.csv")
+duom <- read.csv("vw.csv")                               # failas tame pačiame aplanke kaip kodas
 duom$model <- trimws(duom$model)                         # pavadinimų priekyje yra tarpas
 
 duom <- subset(duom, fuelType %in% c("Petrol", "Diesel"))   # tik benzininiai ir dyzeliniai
@@ -86,36 +86,72 @@ anova(model.1ml, model.1a)
 # ---------------------------------------------------------------------
 # 6. Modeliai su sąveika
 # ---------------------------------------------------------------------
-# Sąveika 1: ar modelio variklis keičia nuvertėjimo greitį
-#    beta1 = gamma10 + gamma11 * vid_variklis + u1
+# SĄVEIKA 1: vid_variklis ir amzius
+# Klausimas: ar didesnio variklio modeliai nuvertėja greičiau?
 model.2ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:amzius,
                  random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
 summary(model.2ml)$tTable
-anova(model.1ml, model.2ml)
+anova(model.1ml, model.2ml)      # p = 0,153 – sąveika nereikalinga
 
-# Sąveika 2: ar variklio dydis keičia degalų sąnaudų (mpg) įtaką kainai
-#    beta3 = gamma30 + gamma31 * vid_variklis
-model.3ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:mpg,
+# SĄVEIKA 2: vid_variklis ir mpg
+# Klausimas: ar variklio dydis keičia degalų sąnaudų (ekonomiškumo) įtaką?
+model.4ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:mpg,
                  random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
-summary(model.3ml)$tTable
-anova(model.1ml, model.3ml)
-AIC(model.1ml) - AIC(model.3ml)   # AIC pokytis < 10 – pagerėjimas kuklus, renkamės paprastesnį model.1
 
+summary(model.4ml)$tTable
+anova(model.1ml, model.4ml)      # p = 0,0007 – modelis su sąveika statistiškai reikšmingai geresnis
+
+# ---------------------------------------------------------------------
+# GALUTINIS MODELIS: su sąveika vid_variklis:mpg, įvertintas REML metodu
+# ---------------------------------------------------------------------
+model.4reml <- update(model.4ml, method = "REML")
+summary(model.4reml)   # fiksuoti parametrai ir st. nuokrypiai
+VarCorr(model.4reml)   # dispersijos: tau00, tau11, sigma^2
+
+# Palyginimas su besąlyginiu modeliu
+sigma2_4 <- model.4reml$sigma^2
+(sigma2_0 - sigma2_4) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
+anova(model.4ml, model.0ml)                   # AIC ir tikėtinumo santykio testas (ML)
+AIC(model.0ml) - AIC(model.4ml)               # Akaikės indekso pokytis
 # ---------------------------------------------------------------------
 # 7. Prielaidų tikrinimas – liekanų ir atsitiktinių efektų q-q grafikai
 # ---------------------------------------------------------------------
-qqnorm(model.1, ~ resid(.))      # I lygmens liekanos e
-qqnorm(model.1, ~ ranef(.))      # II lygmens u0 ir u1
-hist(resid(model.1), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
-plot(model.1, resid(., type = "pearson") ~ fitted(.), abline = 0,
-     main = "Liekanos vs prognozuojamos reikšmės")   # homoskedastiškumas
-mean(abs(resid(model.1, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
-round(ranef(model.1), 3)
+qqnorm(model.4reml, ~ resid(.))      # I lygmens liekanos e
+qqnorm(model.4reml, ~ ranef(.))      # II lygmens u0 ir u1
 
-# ---------------------------------------------------------------------
-# 8. Prognozė: 3 metų Golf, 30 tūkst. mylių, 55 mpg
-# ---------------------------------------------------------------------
+# Homoskedastiškumas (ar liekanų sklaida vienoda prie visų kainų)
+plot(model.4reml, resid(., type = "pearson") ~ fitted(.), abline = 0,
+     main = "Liekanos vs Prognozuojamos reikšmės")
+
+
+hist(resid(model.4reml), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
+mean(abs(resid(model.4reml, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
+round(ranef(model.4reml), 3)
+
+
+
+
+# ==============================================================================
+# 8. PROGNOZĖ NAUDOJANT MODELĮ SU SĄVEIKA (model.4reml)
+# Scenarijus: 3 metų VW Golf, 30 tūkst. mylių rida, 55 mpg
+# ==============================================================================
+
+# 1. Paimame tikslią Golf vidutinio variklio reikšmę
 vv_golf <- unique(duom$vid_variklis[duom$model == "Golf"])
-naujas <- data.frame(model = "Golf", vid_variklis = vv_golf, amzius = 3, rida = 30, mpg = 55)
-exp(predict(model.1, naujas, level = 0))   # pagal fiksuotą dalį („vidutinis“ modelis)
-exp(predict(model.1, naujas, level = 1))   # įvertinus Golf atsitiktinius efektus
+
+# 2. Sukuriame naujo automobilio duomenų eilutę
+naujas_golf <- data.frame(
+  model = factor("Golf", levels = levels(duom$model)),
+  vid_variklis = vv_golf,
+  amzius = 3,
+  rida = 30,
+  mpg = 55
+)
+
+# 3. Skaičiuojame kainos prognozes svarais (£):
+prognoze_pop = exp(predict(model.4reml, naujas_golf, level = 0))  # Populiacijos lygis (level 0)
+prognoze_golf = exp(predict(model.4reml, naujas_golf, level = 1)) # Golf lygis (level 1)
+
+cat("\n--- GOLF PROGNOZĖS REZULTATAI ---\n")
+cat("Bendras vidutinis automobilis rinkoje (level = 0):", round(prognoze_pop, 0), "£\n")
+cat("Konkrečiai VW GOLF prognozė (level = 1):", round(prognoze_golf, 0), "£\n")

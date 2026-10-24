@@ -165,43 +165,70 @@ Sąveikos koeficientas γ̂11 = −0,0152, p = 0,140 – nereikšmingas; AIC pas
 β3 = γ30 + γ31·vid_variklis – ar variklio dydis keičia degalų sąnaudų (mpg) įtaką kainai?
 
 ```{r}
-model.3ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:mpg,
+model.4ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:mpg,
                  random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
-summary(model.3ml)$tTable
-anova(model.1ml, model.3ml)
-AIC(model.1ml) - AIC(model.3ml)   # AIC pokytis < 10 – pagerėjimas kuklus, renkamės paprastesnį model.1
+summary(model.4ml)$tTable
+anova(model.1ml, model.4ml)      # p = 0,0007 – modelis su sąveika statistiškai reikšmingai geresnis
 ```
 
-Sąveikos koeficientas γ̂31 = −0,00206, p < 0,001 – statistiškai reikšmingas: kuo didesnis modelio variklis, tuo labiau kainą mažina didesnis mpg (esant 1 l varikliui +1 mpg mažina kainą ≈ 0,66 %, esant 3 l – ≈ 1,07 %). Tikėtinumo santykio testas L.Ratio = 11,55, p = 0,0007 – modelis statistiškai reikšmingai geresnis, **bet AIC sumažėjo tik 9,6 vieneto (< 10)**, o σ² praktiškai nepasikeitė (0,02234 → 0,02232). Pagerėjimas kuklus, o esant n = 14 864 reikšmingais tampa ir labai maži efektai, todėl galutiniu modeliu paliekame paprastesnį – be sąveikos.
+Sąveikos koeficientas γ̂31 = −0,00206, p < 0,001 – statistiškai reikšmingas. Tikėtinumo santykio testas L.Ratio = 11,55, p = 0,0007 – modeliai statistiškai reikšmingai skiriasi, mažesni ir AIC (−14 135,11 prieš −14 125,56), ir BIC (−14 059,04 prieš −14 057,10). **Galutiniu modeliu renkamės modelį su sąveika 2.** AIC pokytis (9,6) kuklus – mažesnis nei 10.
+
+# Galutinis modelis
+
+- Automobilio lygmuo: lkaina = β0 + β1·amzius + β2·rida + β3·mpg + e
+- Modelio lygmuo: β0 = γ00 + γ01·vid_variklis + u0; β1 = γ10 + u1; β2 = γ20; β3 = γ30 + γ31·vid_variklis
+- Jungtinis modelis: lkaina = [γ00 + γ01·vid_variklis + γ10·amzius + γ20·rida + γ30·mpg + γ31·vid_variklis·mpg] + [u0 + u1·amzius + e]
+- Fiksuoto poveikio kintamieji: vid_variklis, amzius, rida, mpg, vid_variklis·mpg; atsitiktinio poveikio kintamasis: amzius.
+
+```{r}
+model.4reml <- update(model.4ml, method = "REML")
+summary(model.4reml)   # fiksuoti parametrai ir st. nuokrypiai
+VarCorr(model.4reml)   # dispersijos: tau00, tau11, sigma^2
+
+sigma2_4 <- model.4reml$sigma^2
+(sigma2_0 - sigma2_4) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
+anova(model.4ml, model.0ml)                   # AIC ir tikėtinumo santykio testas (ML)
+AIC(model.0ml) - AIC(model.4ml)               # Akaikės indekso pokytis
+```
+
+Iš *Fixed effects* (Value): γ̂00 = 9,519; γ̂01 = 0,562; γ̂10 = −0,0993; γ̂20 = −0,00455; γ̂30 = −0,00459; γ̂31 = −0,00206 – visi statistiškai reikšmingi (p < 0,05). Iš *Random effects* (StdDev²): τ̂00 = 0,1846² = 0,0341; τ̂11 = 0,0214² = 0,00046; corr(u0, u1) = −0,08; σ̂² = 0,1494² = 0,0223.
+
+**Jungtinė lygtis su įverčiais:**
+lkaina = [9,519 + 0,562·vid_variklis − 0,0993·amzius − 0,00455·rida − 0,00459·mpg − 0,00206·vid_variklis·mpg] + [u0 + u1·amzius + e]
+
+Kiekvieni metai sumažina kainą apie 9,5 %, 1000 mylių ridos – apie 0,45 %. mpg poveikis priklauso nuo variklio: +1 mpg sumažina kainą ≈ 0,66 % (1 l), ≈ 0,87 % (2 l), ≈ 1,07 % (3 l). Amžiaus nuolydžio st. nuokrypis 0,021 – modeliai nuvertėja nevienodai (Caravelle ≈ 5,9 %, Beetle ≈ 13,3 % per metus).
+
+**I lygmens dispersijos sąlyginis pokytis** = (0,1078 − 0,0223) / 0,1078 = **0,793**: lyginant su besąlyginiu modeliu, 79,3 % sumažėjo modeliu nepaaiškintų kainų skirtumų. **Akaikės indekso pokytis**: 9 203,80 → −14 135,11, t. y. sumažėjo **23 339** vienetais (> 10), L.Ratio = 23 352,9, p < 0,0001.
 
 # Prielaidų tikrinimas
 
 ```{r}
-qqnorm(model.1, ~ resid(.))      # I lygmens liekanos e
-qqnorm(model.1, ~ ranef(.))      # II lygmens u0 ir u1
-hist(resid(model.1), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
-plot(model.1, resid(., type = "pearson") ~ fitted(.), abline = 0,
+qqnorm(model.4reml, ~ resid(.))      # I lygmens liekanos e
+qqnorm(model.4reml, ~ ranef(.))      # II lygmens u0 ir u1
+plot(model.4reml, resid(., type = "pearson") ~ fitted(.), abline = 0,
      main = "Liekanos vs prognozuojamos reikšmės")   # homoskedastiškumas
-mean(abs(resid(model.1, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
-round(ranef(model.1), 3)
+hist(resid(model.4reml), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
+mean(abs(resid(model.4reml, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
+round(ranef(model.4reml), 3)
 ```
 
-I lygmens liekanų q-q grafiko centrinė dalis guli ant tiesės, histograma simetriška; nukrypimai tik kairėje uodegoje (keli itin pigūs skelbimai). Tik 0,67 % standartizuotų liekanų viršija 3, todėl normalumo prielaidą laikome apytiksliai tenkinama. Liekanų ir prognozuojamų reikšmių grafike sklaida apie 0 vienoda visame intervale (standartizuotų liekanų st. nuokrypis kvartiliuose 0,91–1,09) – homoskedastiškumo prielaida tenkinama. II lygmens efektai u0 ir u1 (21 modelis) taip pat išsidėstę apie tiesę; brangiausias lyginant su prognoze – Caravelle (u0 = +0,419), pigiausias – Up (u0 = −0,400).
+I lygmens liekanų q-q grafiko centrinė dalis guli ant tiesės, nukrypimai tik kairėje uodegoje (keli itin pigūs skelbimai); tik 0,68 % standartizuotų liekanų viršija 3 – normalumo prielaidą laikome apytiksliai tenkinama. Liekanų ir prognozuojamų reikšmių grafike sklaida apie 0 vienoda (standartizuotų liekanų st. nuokrypis kvartiliuose 0,91–1,09) – homoskedastiškumas tenkinamas. II lygmens efektai u0 ir u1 išsidėstę apie tiesę; brangiausias lyginant su prognoze – Caravelle (u0 = +0,416), pigiausias – Up (u0 = −0,417).
 
 # Prognozė
 
 ```{r}
 vv_golf <- unique(duom$vid_variklis[duom$model == "Golf"])
-naujas <- data.frame(model = "Golf", vid_variklis = vv_golf, amzius = 3, rida = 30, mpg = 55)
-exp(predict(model.1, naujas, level = 0))   # pagal fiksuotą dalį („vidutinis“ modelis)
-exp(predict(model.1, naujas, level = 1))   # įvertinus Golf atsitiktinius efektus
+naujas_golf <- data.frame(model = factor("Golf", levels = levels(duom$model)),
+                          vid_variklis = vv_golf, amzius = 3, rida = 30, mpg = 55)
+exp(predict(model.4reml, naujas_golf, level = 0))   # populiacijos lygis
+exp(predict(model.4reml, naujas_golf, level = 1))   # su Golf atsitiktiniais efektais
 ```
 
-3 metų Golf, nuvažiavęs 30 tūkst. mylių, su 55 mpg sąnaudomis, pagal fiksuotą dalį kainuotų apie **14 554 £**; įvertinus Golf atsitiktinius efektus – apie 14 943 £ (Golf pigsta šiek tiek lėčiau nei vidutinis modelis).
+3 metų Golf, nuvažiavęs 30 tūkst. mylių, su 55 mpg sąnaudomis, pagal fiksuotą dalį kainuotų apie **14 527 £**; įvertinus Golf atsitiktinius efektus – apie 14 944 £.
 
 # Išvados
 
 - ICC = 0,654: apie 65 % kainų skirtumų lemia automobilio modelis, todėl HLM pagrįstas.
-- Kaina mažėja apie 9,5 % per metus ir 0,46 % per 1000 mylių; modelis su 1 l didesniu vidutiniu varikliu ~61 % brangesnis.
-- Galutinis modelis gerokai geresnis už besąlyginį: AIC sumažėjo 23 329, nepaaiškintų I lygmens skirtumų – 79,3 % mažiau.
-- Kas negerai: sąveika vid_variklis·amzius nereikšminga; sąveika vid_variklis·mpg reikšminga, bet AIC pokytis < 10 – renkamės paprastesnį modelį; liekanų kairė uodega; tai skelbimų, o ne sandorių kainos; tirta tik VW markė.
+- Galutinis modelis – su sąveika vid_variklis·mpg: kaina mažėja apie 9,5 % per metus ir 0,45 % per 1000 mylių; ekonomiškumo (mpg) poveikis stipresnis didesnio variklio modeliams.
+- Galutinis modelis gerokai geresnis už besąlyginį: AIC sumažėjo 23 339, nepaaiškintų I lygmens skirtumų – 79,3 % mažiau.
+- Kas negerai: sąveika vid_variklis·amzius nereikšminga; sąveikos vid_variklis·mpg AIC pokytis kuklus (< 10), o didelėje imtyje reikšmingi tampa ir maži efektai; liekanų kairė uodega; tai skelbimų, o ne sandorių kainos; tirta tik VW markė.
