@@ -9,5 +9,6 @@ Savarankiškas HLM: naudotų Volkswagen automobilių kainos (Kaggle „100,000 U
 - `K6_HLM_VW.Rmd` – tas pats kodas su komentarais ir išvadomis (R Markdown)
 - `K6_HLM_VW.html` – sugeneruota Rmd ataskaita
 - `vw.csv` – duomenys (laikyti tame pačiame aplanke kaip kodą)
+- `K6_HLM_VW_pristatymas.pptx` – pristatymo skaidrės (VU šablonas)
 
 Bibliotekos: `nlme`, `ggplot2`, `rmarkdown` (Rmd generavimui).
