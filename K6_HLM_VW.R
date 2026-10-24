@@ -84,13 +84,22 @@ model.1a <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg,
 anova(model.1ml, model.1a)
 
 # ---------------------------------------------------------------------
-# 6. Modelis su sąveika: ar modelio variklis keičia nuvertėjimo greitį
-#    beta1 = gamma10 + gamma11 * vid_variklis + u1
+# 6. Modeliai su sąveika
 # ---------------------------------------------------------------------
+# Sąveika 1: ar modelio variklis keičia nuvertėjimo greitį
+#    beta1 = gamma10 + gamma11 * vid_variklis + u1
 model.2ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:amzius,
                  random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
 summary(model.2ml)$tTable
 anova(model.1ml, model.2ml)
+
+# Sąveika 2: ar variklio dydis keičia degalų sąnaudų (mpg) įtaką kainai
+#    beta3 = gamma30 + gamma31 * vid_variklis
+model.3ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:mpg,
+                 random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
+summary(model.3ml)$tTable
+anova(model.1ml, model.3ml)
+AIC(model.1ml) - AIC(model.3ml)   # AIC pokytis < 10 – pagerėjimas kuklus, renkamės paprastesnį model.1
 
 # ---------------------------------------------------------------------
 # 7. Prielaidų tikrinimas – liekanų ir atsitiktinių efektų q-q grafikai
@@ -98,6 +107,8 @@ anova(model.1ml, model.2ml)
 qqnorm(model.1, ~ resid(.))      # I lygmens liekanos e
 qqnorm(model.1, ~ ranef(.))      # II lygmens u0 ir u1
 hist(resid(model.1), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
+plot(model.1, resid(., type = "pearson") ~ fitted(.), abline = 0,
+     main = "Liekanos vs prognozuojamos reikšmės")   # homoskedastiškumas
 mean(abs(resid(model.1, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
 round(ranef(model.1), 3)
 
