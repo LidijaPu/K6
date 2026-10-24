@@ -1,6 +1,6 @@
 ---
 title: "K6(10) – Savarankiškas HLM: naudotų Volkswagen automobilių kainos"
-author: "Lidija Puščiūtė"
+author: "Lidija Puščiūtė, Darja Baranova"
 date: "2026-10-24"
 output:
   html_document:

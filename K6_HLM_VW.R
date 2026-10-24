@@ -1,4 +1,5 @@
 # =====================================================================
+# Autorės: Lidija Puščiūtė, Darja Baranova
 # K6(10) – Savarankiškas HLM: naudotų Volkswagen automobilių kainos
 # Duomenys: Kaggle „100,000 UK Used Car Data set“ (failas vw.csv)
 # I lygmuo – automobilis (skelbimas), II lygmuo – automobilio modelis

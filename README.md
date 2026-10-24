@@ -1,6 +1,8 @@
 # K6
 taikomoji daugiamate analize
 
+Autorės: Lidija Puščiūtė, Darja Baranova
+
 Savarankiškas HLM: naudotų Volkswagen automobilių kainos (Kaggle „100,000 UK Used Car Data set“, `vw.csv`).
 
 - `K6_HLM_VW.R` – R kodas
