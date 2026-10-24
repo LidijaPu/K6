@@ -1,0 +1,191 @@
+---
+title: "K6(10) – Savarankiškas HLM: naudotų Volkswagen automobilių kainos"
+author: "Lidija Puščiūtė"
+date: "2026-10-24"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Duomenys
+
+**Šaltinis:** Kaggle rinkinys „100,000 UK Used Car Data set“, failas `vw.csv` – naudotų Volkswagen automobilių pardavimo skelbimai Jungtinėje Karalystėje (surinkta 2020 m.).
+
+**I lygmuo** – automobilis (skelbimas), **II lygmuo** – automobilio modelis (Golf, Polo, Tiguan…).
+
+| Kintamasis | Prasmė | Skalė |
+|---|---|---|
+| price | kaina, £ (modelyje – log) | intervalinė |
+| year → amzius | amžius = 2020 − metai | intervalinė |
+| mileage → rida | rida, tūkst. mylių | intervalinė |
+| mpg | mylios galonui (sąnaudos) | intervalinė |
+| engineSize → vid_variklis | modelio vidutinis variklio tūris, l | intervalinė (II lygmuo) |
+| model | modelis | nominali (grupavimo) |
+
+## Bibliotekos
+
+```{r}
+library(nlme)      # lme() – hierarchiniai tiesiniai modeliai (kaip paskaitos pavyzdyje)
+library(ggplot2)   # priklausomo kintamojo histograma
+```
+
+## Nuskaitymas ir paruošimas
+
+```{r}
+duom <- read.csv("vw.csv")
+duom$model <- trimws(duom$model)                         # pavadinimų priekyje yra tarpas
+
+duom <- subset(duom, fuelType %in% c("Petrol", "Diesel"))   # tik benzininiai ir dyzeliniai
+duom <- subset(duom, engineSize > 0)                        # variklio tūris 0 – klaida
+duom <- subset(duom, mpg >= 20 & mpg <= 100)                # neįtikėtinos sąnaudų reikšmės
+duom <- duom[duom$model %in% names(which(table(duom$model) >= 30)), ]  # modeliai su >= 30 automobilių
+duom$model <- factor(duom$model)
+
+duom$lkaina <- log(duom$price)        # priklausomas kintamasis – kainos logaritmas
+duom$amzius <- 2020 - duom$year       # amžius metais (duomenys surinkti 2020 m.)
+duom$rida   <- duom$mileage / 1000    # rida, tūkst. mylių
+duom$vid_variklis <- ave(duom$engineSize, duom$model)   # II lygmens kintamasis: modelio vidutinis variklio tūris
+
+nrow(duom)            # stebėjimų skaičius
+nlevels(duom$model)   # II lygmens aibių (modelių) skaičius
+sort(table(duom$model))
+```
+
+Po valymo liko **14 864** automobiliai ir **21** modelis – reikalavimas turėti bent 15 II lygmens aibių tenkinamas.
+
+# Priklausomo kintamojo normalumas
+
+```{r}
+ggplot(duom, aes(x = lkaina)) +
+  geom_histogram(bins = 30, fill = "#69b3a2", color = "white") +
+  labs(title = "Priklausomo kintamojo histograma", x = "log(kaina)", y = "Dažnis")
+set.seed(2026)
+shapiro.test(sample(duom$lkaina, 5000))   # shapiro.test leidžia iki 5000 stebėjimų – atsitiktinė imtis
+```
+
+Kaina (£) turi ilgą dešinę uodegą, todėl modeliuojamas jos logaritmas. log(kainos) histograma beveik simetriška. Shapiro–Wilk W = 0,986, p < 0,001 – formaliai normalumas atmetamas, tačiau W artimas 1, o esant tūkstančiams stebėjimų testas atmeta ir menkus nukrypimus; nukrypimas matomas tik kairėje uodegoje.
+
+# Besąlyginis modelis ir ICC
+
+Automobilio lygmuo: lkaina = β0 + e; modelio lygmuo: β0 = γ00 + u0; jungtinis modelis: lkaina = γ00 + u0 + e.
+
+```{r}
+model.0 <- lme(lkaina ~ 1, random = ~ 1 | model, data = duom)   # REML
+summary(model.0)
+VarCorr(model.0)
+tau00 <- as.numeric(VarCorr(model.0)[1, "Variance"])
+sigma2_0 <- model.0$sigma^2
+ICC <- tau00 / (tau00 + sigma2_0)
+ICC
+intervals(model.0)    # PI dispersijų st. nuokrypiams (ar tau00 > 0, sigma^2 > 0)
+```
+
+Iš `summary(model.0)`: γ̂00 = 9,754 (bendras log(kainos) vidurkis), StdDev (Intercept) = 0,4512, Residual = 0,3283, todėl τ̂00 ≈ 0,4512² ≈ 0,2036, σ̂² ≈ 0,3283² ≈ 0,1078.
+
+Hipotezės H0: γ00 = 0, H0: τ00 = 0, H0: σ² = 0 atmetamos (γ00 p < 0,001; `intervals()` st. nuokrypių 95 % PI 0,330–0,617 ir 0,325–0,332 neapima nulio).
+
+**ICC = 0,2036 / (0,2036 + 0,1078) = 0,654** ≥ 0,10 – apie 65 % log(kainos) skirtumų priklauso nuo automobilio modelio, todėl hierarchinė struktūra būtina.
+
+# Intervalinių I lygmens kintamųjų koreliacijos
+
+```{r}
+round(cor(duom[, c("amzius", "rida", "mpg")]), 3)
+```
+
+Stipriausiai koreliuoja amžius ir rida (r = 0,763): senesni automobiliai daugiau nuvažiavę. Koreliacija mažesnė už 0,8, todėl abu kintamieji paliekami. mpg su kitais koreliuoja vidutiniškai (≈ 0,40).
+
+# Dviejų lygmenų modelis
+
+- Automobilio lygmuo: lkaina = β0 + β1·amzius + β2·rida + β3·mpg + e
+- Modelio lygmuo: β0 = γ00 + γ01·vid_variklis + u0; β1 = γ10 + u1; β2 = γ20; β3 = γ30
+- Jungtinis modelis: lkaina = [γ00 + γ01·vid_variklis + γ10·amzius + γ20·rida + γ30·mpg] + [u0 + u1·amzius + e]
+- Fiksuoto poveikio kintamieji: vid_variklis, amzius, rida, mpg; atsitiktinio poveikio kintamasis: amzius.
+
+```{r}
+ctrl <- lmeControl(opt = "optim", maxIter = 200, msMaxIter = 200)
+model.1 <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg,
+               random = ~ 1 + amzius | model, data = duom, control = ctrl)   # REML
+summary(model.1)        # fiksuoti parametrai (Fixed effects) ir st. nuokrypiai (Random effects)
+VarCorr(model.1)        # dispersijos: tau00, tau11, sigma^2
+```
+
+Iš lentelės *Fixed effects* (stulpelis Value): γ̂00 = 9,660; γ̂01 = 0,477; γ̂10 = −0,0995; γ̂20 = −0,00457; γ̂30 = −0,00795. Visi statistiškai reikšmingi (p < 0,05).
+
+Iš *Random effects* (StdDev²): τ̂00 = 0,0337; τ̂11 = 0,00048; corr(u0, u1) = −0,09; σ̂² = 0,0223.
+
+**Jungtinė lygtis su įverčiais:**
+lkaina = [9,660 + 0,477·vid_variklis − 0,0995·amzius − 0,00457·rida − 0,00795·mpg] + [u0 + u1·amzius + e]
+
+Kadangi Y = log(kaina), poveikis procentais = (e^koef − 1)·100: kiekvieni metai sumažina kainą apie 9,5 %, 1000 mylių – apie 0,46 %, 1 mpg – apie 0,79 %; modelis su 1 l didesniu vidutiniu varikliu vidutiniškai 61 % brangesnis. Amžiaus nuolydžio st. nuokrypis 0,022 rodo, kad modeliai nuvertėja nevienodai (pvz. Caravelle ≈ 5,8 %, Beetle ≈ 13,3 % per metus).
+
+# Modelių palyginimas su besąlyginiu
+
+```{r}
+sigma2_1 <- model.1$sigma^2
+(sigma2_0 - sigma2_1) / sigma2_0      # I lygmens dispersijos sąlyginis pokytis
+
+model.0ml <- update(model.0, method = "ML")   # palyginimui – ML įverčiai
+model.1ml <- update(model.1, method = "ML")
+anova(model.1ml, model.0ml)                   # AIC ir tikėtinumo santykio testas
+AIC(model.0ml) - AIC(model.1ml)               # Akaikės indekso pokytis
+
+# Ar reikalingas atsitiktinis amžiaus nuolydis?
+model.1a <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg,
+                random = ~ 1 | model, data = duom, method = "ML")
+anova(model.1ml, model.1a)
+```
+
+**I lygmens dispersijos sąlyginis pokytis** = (0,1078 − 0,0223) / 0,1078 = **0,793**: lyginant su besąlyginiu modeliu, 79,3 % sumažėjo modeliu nepaaiškintų kainų skirtumų.
+
+**Akaikės indekso pokytis** (ML): 9 203,80 → −14 125,56, t. y. sumažėjo **23 329** vienetais (daug daugiau nei 10), L.Ratio = 23 341, p < 0,0001 – galutinis modelis daug geresnis.
+
+Be atsitiktinio amžiaus nuolydžio AIC = −13 580,3, L.Ratio = 549,27, p < 0,0001 – nuolydis u1 reikalingas.
+
+# Modelis su sąveika
+
+β1 = γ10 + γ11·vid_variklis + u1 – ar didesnio variklio modeliai pigsta greičiau?
+
+```{r}
+model.2ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:amzius,
+                 random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
+summary(model.2ml)$tTable
+anova(model.1ml, model.2ml)
+```
+
+Sąveikos koeficientas γ̂11 = −0,0152, p = 0,140 – nereikšmingas; AIC pasikeitė mažiau nei 1, L.Ratio p = 0,153. Modeliai statistiškai reikšmingai nesiskiria, todėl renkamės paprastesnį – be sąveikos.
+
+# Prielaidų tikrinimas
+
+```{r}
+qqnorm(model.1, ~ resid(.))      # I lygmens liekanos e
+qqnorm(model.1, ~ ranef(.))      # II lygmens u0 ir u1
+hist(resid(model.1), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
+mean(abs(resid(model.1, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
+round(ranef(model.1), 3)
+```
+
+I lygmens liekanų q-q grafiko centrinė dalis guli ant tiesės, histograma simetriška; nukrypimai tik kairėje uodegoje (keli itin pigūs skelbimai). Tik 0,67 % standartizuotų liekanų viršija 3, todėl normalumo prielaidą laikome apytiksliai tenkinama. II lygmens efektai u0 ir u1 (21 modelis) taip pat išsidėstę apie tiesę; brangiausias lyginant su prognoze – Caravelle (u0 = +0,419), pigiausias – Up (u0 = −0,400).
+
+# Prognozė
+
+```{r}
+vv_golf <- unique(duom$vid_variklis[duom$model == "Golf"])
+naujas <- data.frame(model = "Golf", vid_variklis = vv_golf, amzius = 3, rida = 30, mpg = 55)
+exp(predict(model.1, naujas, level = 0))   # pagal fiksuotą dalį („vidutinis“ modelis)
+exp(predict(model.1, naujas, level = 1))   # įvertinus Golf atsitiktinius efektus
+```
+
+3 metų Golf, nuvažiavęs 30 tūkst. mylių, su 55 mpg sąnaudomis, pagal fiksuotą dalį kainuotų apie **14 554 £**; įvertinus Golf atsitiktinius efektus – apie 14 943 £ (Golf pigsta šiek tiek lėčiau nei vidutinis modelis).
+
+# Išvados
+
+- ICC = 0,654: apie 65 % kainų skirtumų lemia automobilio modelis, todėl HLM pagrįstas.
+- Kaina mažėja apie 9,5 % per metus ir 0,46 % per 1000 mylių; modelis su 1 l didesniu vidutiniu varikliu ~61 % brangesnis.
+- Galutinis modelis gerokai geresnis už besąlyginį: AIC sumažėjo 23 329, nepaaiškintų I lygmens skirtumų – 79,3 % mažiau.
+- Kas negerai: sąveika nereikalinga; liekanų kairė uodega; tai skelbimų, o ne sandorių kainos; tirta tik VW markė.
