@@ -27,6 +27,8 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 | mpg | mylios galonui (sąnaudos) | intervalinė |
 | engineSize → vid_variklis | modelio vidutinis variklio tūris, l | intervalinė (II lygmuo) |
 | model | modelis | nominali (grupavimo) |
+| transmission | pavarų dėžė (Automatic, Manual, Semi-Auto) | nominali |
+| fuelType | kuro tipas (Diesel, Petrol) | nominali |
 
 ## Bibliotekos
 
@@ -171,64 +173,84 @@ summary(model.4ml)$tTable
 anova(model.1ml, model.4ml)      # p = 0,0007 – modelis su sąveika statistiškai reikšmingai geresnis
 ```
 
-Sąveikos koeficientas γ̂31 = −0,00206, p < 0,001 – statistiškai reikšmingas. Tikėtinumo santykio testas L.Ratio = 11,55, p = 0,0007 – modeliai statistiškai reikšmingai skiriasi, mažesni ir AIC (−14 135,11 prieš −14 125,56), ir BIC (−14 059,04 prieš −14 057,10). **Galutiniu modeliu renkamės modelį su sąveika 2.** AIC pokytis (9,6) kuklus – mažesnis nei 10.
+Sąveikos koeficientas γ̂31 = −0,00206, p < 0,001 – statistiškai reikšmingas. Tikėtinumo santykio testas L.Ratio = 11,55, p = 0,0007 – modeliai statistiškai reikšmingai skiriasi, mažesni ir AIC (−14 135,11 prieš −14 125,56), ir BIC (−14 059,04 prieš −14 057,10). Sąveiką 2 paliekame modelyje, nors AIC pokytis (9,6) kuklus – mažesnis nei 10.
+
+# Modelis su kategoriniais kintamaisiais
+
+Į I lygmenį įtraukiami kategoriniai kintamieji pavarų dėžė (transmission) ir kuro tipas (fuelType). R automatiškai sukuria pseudokintamuosius Manual, SemiAuto ir Petrol; bazinės kategorijos – Automatic ir Diesel.
+
+```{r}
+duom$transmission <- factor(duom$transmission)   # Automatic, Manual, Semi-Auto
+duom$fuelType <- factor(duom$fuelType)           # Diesel, Petrol
+table(duom$transmission); table(duom$fuelType)
+
+model.5ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:mpg +
+                   transmission + fuelType,
+                 random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
+summary(model.5ml)$tTable
+anova(model.4ml, model.5ml)
+```
+
+Visi kategorinių kintamųjų koeficientai statistiškai reikšmingi (p < 0,01). AIC sumažėjo nuo −14 135,11 iki −16 589,23, t. y. **2 454 vienetais (> 10)**, L.Ratio = 2 460, p < 0,0001 – kategoriniai kintamieji modelį gerokai pagerina. **Galutiniu modeliu renkamės modelį su kategoriniais kintamaisiais.**
 
 # Galutinis modelis
 
-- Automobilio lygmuo: lkaina = β0 + β1·amzius + β2·rida + β3·mpg + e
-- Modelio lygmuo: β0 = γ00 + γ01·vid_variklis + u0; β1 = γ10 + u1; β2 = γ20; β3 = γ30 + γ31·vid_variklis
-- Jungtinis modelis: lkaina = [γ00 + γ01·vid_variklis + γ10·amzius + γ20·rida + γ30·mpg + γ31·vid_variklis·mpg] + [u0 + u1·amzius + e]
-- Fiksuoto poveikio kintamieji: vid_variklis, amzius, rida, mpg, vid_variklis·mpg; atsitiktinio poveikio kintamasis: amzius.
+- Automobilio lygmuo: lkaina = β0 + β1·amzius + β2·rida + β3·mpg + β4·Manual + β5·SemiAuto + β6·Petrol + e
+- Modelio lygmuo: β0 = γ00 + γ01·vid_variklis + u0; β1 = γ10 + u1; β2 = γ20; β3 = γ30 + γ31·vid_variklis; β4 = γ40; β5 = γ50; β6 = γ60
+- Jungtinis modelis: lkaina = [γ00 + γ01·vid_variklis + γ10·amzius + γ20·rida + γ30·mpg + γ31·vid_variklis·mpg + γ40·Manual + γ50·SemiAuto + γ60·Petrol] + [u0 + u1·amzius + e]
+- Fiksuoto poveikio kintamieji: vid_variklis, amzius, rida, mpg, vid_variklis·mpg, Manual, SemiAuto, Petrol; atsitiktinio poveikio kintamasis: amzius.
 
 ```{r}
-model.4reml <- update(model.4ml, method = "REML")
-summary(model.4reml)   # fiksuoti parametrai ir st. nuokrypiai
-VarCorr(model.4reml)   # dispersijos: tau00, tau11, sigma^2
+model.5reml <- update(model.5ml, method = "REML")
+summary(model.5reml)   # fiksuoti parametrai ir st. nuokrypiai
+VarCorr(model.5reml)   # dispersijos: tau00, tau11, sigma^2
 
-sigma2_4 <- model.4reml$sigma^2
-(sigma2_0 - sigma2_4) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
-anova(model.4ml, model.0ml)                   # AIC ir tikėtinumo santykio testas (ML)
-AIC(model.0ml) - AIC(model.4ml)               # Akaikės indekso pokytis
+sigma2_5 <- model.5reml$sigma^2
+(sigma2_0 - sigma2_5) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
+anova(model.5ml, model.0ml)                   # AIC ir tikėtinumo santykio testas (ML)
+AIC(model.0ml) - AIC(model.5ml)               # Akaikės indekso pokytis
 ```
 
-Iš *Fixed effects* (Value): γ̂00 = 9,519; γ̂01 = 0,562; γ̂10 = −0,0993; γ̂20 = −0,00455; γ̂30 = −0,00459; γ̂31 = −0,00206 – visi statistiškai reikšmingi (p < 0,05). Iš *Random effects* (StdDev²): τ̂00 = 0,1846² = 0,0341; τ̂11 = 0,0214² = 0,00046; corr(u0, u1) = −0,08; σ̂² = 0,1494² = 0,0223.
+Iš *Fixed effects* (Value): γ̂00 = 9,724; γ̂01 = 0,502; γ̂10 = −0,0916; γ̂20 = −0,00454; γ̂30 = −0,00280; γ̂31 = −0,00344; γ̂40 = −0,110; γ̂50 = 0,0126; γ̂60 = −0,0809 – visi statistiškai reikšmingi (p < 0,05). Iš *Random effects* (StdDev²): τ̂00 = 0,1754² = 0,0308; τ̂11 = 0,0248² = 0,00062; corr(u0, u1) = −0,19; σ̂² = 0,1375² = 0,0189.
 
 **Jungtinė lygtis su įverčiais:**
-lkaina = [9,519 + 0,562·vid_variklis − 0,0993·amzius − 0,00455·rida − 0,00459·mpg − 0,00206·vid_variklis·mpg] + [u0 + u1·amzius + e]
+lkaina = [9,724 + 0,502·vid_variklis − 0,0916·amzius − 0,00454·rida − 0,00280·mpg − 0,00344·vid_variklis·mpg − 0,110·Manual + 0,0126·SemiAuto − 0,0809·Petrol] + [u0 + u1·amzius + e]
 
-Kiekvieni metai sumažina kainą apie 9,5 %, 1000 mylių ridos – apie 0,45 %. mpg poveikis priklauso nuo variklio: +1 mpg sumažina kainą ≈ 0,66 % (1 l), ≈ 0,87 % (2 l), ≈ 1,07 % (3 l). Amžiaus nuolydžio st. nuokrypis 0,021 – modeliai nuvertėja nevienodai (Caravelle ≈ 5,9 %, Beetle ≈ 13,3 % per metus).
+Kiekvieni metai sumažina kainą apie 8,8 %, 1000 mylių ridos – apie 0,45 %. Mechaninė dėžė apie 10,5 % pigesnė, Semi-Auto apie 1,3 % brangesnė nei automatinė; benzininis automobilis apie 7,8 % pigesnis nei dyzelinis. mpg poveikis priklauso nuo variklio: +1 mpg sumažina kainą ≈ 0,62 % (1 l), ≈ 0,96 % (2 l), ≈ 1,30 % (3 l). Amžiaus nuolydžio st. nuokrypis 0,025 – modeliai nuvertėja nevienodai (Caravelle ≈ 5,4 %, Beetle ≈ 13,2 % per metus).
 
-**I lygmens dispersijos sąlyginis pokytis** = (0,1078 − 0,0223) / 0,1078 = **0,793**: lyginant su besąlyginiu modeliu, 79,3 % sumažėjo modeliu nepaaiškintų kainų skirtumų. **Akaikės indekso pokytis**: 9 203,80 → −14 135,11, t. y. sumažėjo **23 339** vienetais (> 10), L.Ratio = 23 352,9, p < 0,0001.
+**I lygmens dispersijos sąlyginis pokytis** = (0,1078 − 0,0189) / 0,1078 = **0,825**: lyginant su besąlyginiu modeliu, 82,5 % sumažėjo modeliu nepaaiškintų kainų skirtumų. **Akaikės indekso pokytis**: 9 203,80 → −16 589,23, t. y. sumažėjo **25 793** vienetais (> 10), L.Ratio = 25 813,0, p < 0,0001.
 
 # Prielaidų tikrinimas
 
 ```{r}
-qqnorm(model.4reml, ~ resid(.))      # I lygmens liekanos e
-qqnorm(model.4reml, ~ ranef(.))      # II lygmens u0 ir u1
-plot(model.4reml, resid(., type = "pearson") ~ fitted(.), abline = 0,
+qqnorm(model.5reml, ~ resid(.))      # I lygmens liekanos e
+qqnorm(model.5reml, ~ ranef(.))      # II lygmens u0 ir u1
+plot(model.5reml, resid(., type = "pearson") ~ fitted(.), abline = 0,
      main = "Liekanos vs prognozuojamos reikšmės")   # homoskedastiškumas
-hist(resid(model.4reml), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
-mean(abs(resid(model.4reml, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
-round(ranef(model.4reml), 3)
+hist(resid(model.5reml), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
+mean(abs(resid(model.5reml, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
+round(ranef(model.5reml), 3)
 ```
 
-I lygmens liekanų q-q grafiko centrinė dalis guli ant tiesės, nukrypimai tik kairėje uodegoje (keli itin pigūs skelbimai); tik 0,68 % standartizuotų liekanų viršija 3 – normalumo prielaidą laikome apytiksliai tenkinama. Liekanų ir prognozuojamų reikšmių grafike sklaida apie 0 vienoda (standartizuotų liekanų st. nuokrypis kvartiliuose 0,91–1,09) – homoskedastiškumas tenkinamas. II lygmens efektai u0 ir u1 išsidėstę apie tiesę; brangiausias lyginant su prognoze – Caravelle (u0 = +0,416), pigiausias – Up (u0 = −0,417).
+I lygmens liekanų q-q grafiko centrinė dalis guli ant tiesės, nukrypimai tik kairėje uodegoje (keli itin pigūs skelbimai); tik 0,61 % standartizuotų liekanų viršija 3 – normalumo prielaidą laikome apytiksliai tenkinama. Liekanų ir prognozuojamų reikšmių grafike sklaida apie 0 vienoda (standartizuotų liekanų st. nuokrypis kvartiliuose 0,95–1,03) – homoskedastiškumas tenkinamas. II lygmens efektai u0 ir u1 išsidėstę apie tiesę; brangiausias lyginant su prognoze – Caravelle (u0 = +0,355), pigiausias – Up (u0 = −0,397).
 
 # Prognozė
 
 ```{r}
 vv_golf <- unique(duom$vid_variklis[duom$model == "Golf"])
 naujas_golf <- data.frame(model = factor("Golf", levels = levels(duom$model)),
-                          vid_variklis = vv_golf, amzius = 3, rida = 30, mpg = 55)
-exp(predict(model.4reml, naujas_golf, level = 0))   # populiacijos lygis
-exp(predict(model.4reml, naujas_golf, level = 1))   # su Golf atsitiktiniais efektais
+                          vid_variklis = vv_golf, amzius = 3, rida = 30, mpg = 55,
+                          transmission = factor("Manual", levels = levels(duom$transmission)),
+                          fuelType = factor("Petrol", levels = levels(duom$fuelType)))
+exp(predict(model.5reml, naujas_golf, level = 0))   # populiacijos lygis
+exp(predict(model.5reml, naujas_golf, level = 1))   # su Golf atsitiktiniais efektais
 ```
 
-3 metų Golf, nuvažiavęs 30 tūkst. mylių, su 55 mpg sąnaudomis, pagal fiksuotą dalį kainuotų apie **14 527 £**; įvertinus Golf atsitiktinius efektus – apie 14 944 £.
+3 metų benzininis Golf su mechanine dėže, nuvažiavęs 30 tūkst. mylių, su 55 mpg sąnaudomis, pagal fiksuotą dalį kainuotų apie **13 252 £**; įvertinus Golf atsitiktinius efektus – apie 13 789 £.
 
 # Išvados
 
 - ICC = 0,654: apie 65 % kainų skirtumų lemia automobilio modelis, todėl HLM pagrįstas.
-- Galutinis modelis – su sąveika vid_variklis·mpg: kaina mažėja apie 9,5 % per metus ir 0,45 % per 1000 mylių; ekonomiškumo (mpg) poveikis stipresnis didesnio variklio modeliams.
-- Galutinis modelis gerokai geresnis už besąlyginį: AIC sumažėjo 23 339, nepaaiškintų I lygmens skirtumų – 79,3 % mažiau.
+- Galutinis modelis – su sąveika vid_variklis·mpg ir kategoriniais kintamaisiais: kaina mažėja apie 8,8 % per metus ir 0,45 % per 1000 mylių; mechaninė dėžė ~10,5 % pigiau, benzinas ~7,8 % pigiau; ekonomiškumo (mpg) poveikis stipresnis didesnio variklio modeliams.
+- Galutinis modelis gerokai geresnis už besąlyginį: AIC sumažėjo 25 793, nepaaiškintų I lygmens skirtumų – 82,5 % mažiau.
 - Kas negerai: sąveika vid_variklis·amzius nereikšminga; sąveikos vid_variklis·mpg AIC pokytis kuklus (< 10), o didelėje imtyje reikšmingi tampa ir maži efektai; liekanų kairė uodega; tai skelbimų, o ne sandorių kainos; tirta tik VW markė.

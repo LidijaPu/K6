@@ -102,38 +102,54 @@ summary(model.4ml)$tTable
 anova(model.1ml, model.4ml)      # p = 0,0007 – modelis su sąveika statistiškai reikšmingai geresnis
 
 # ---------------------------------------------------------------------
-# GALUTINIS MODELIS: su sąveika vid_variklis:mpg, įvertintas REML metodu
+# 7. Modelis su kategoriniais kintamaisiais (pavarų dėžė ir kuro tipas)
+#    R automatiškai sukuria pseudokintamuosius:
+#    bazinės kategorijos – Automatic ir Diesel
 # ---------------------------------------------------------------------
-model.4reml <- update(model.4ml, method = "REML")
-summary(model.4reml)   # fiksuoti parametrai ir st. nuokrypiai
-VarCorr(model.4reml)   # dispersijos: tau00, tau11, sigma^2
+duom$transmission <- factor(duom$transmission)   # Automatic, Manual, Semi-Auto
+duom$fuelType <- factor(duom$fuelType)           # Diesel, Petrol
+table(duom$transmission); table(duom$fuelType)
+
+model.5ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:mpg +
+                   transmission + fuelType,
+                 random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
+summary(model.5ml)$tTable
+anova(model.4ml, model.5ml)      # AIC sumažėja ~2454 – kategoriniai kintamieji reikalingi
+
+# ---------------------------------------------------------------------
+# GALUTINIS MODELIS: su sąveika vid_variklis:mpg ir kategoriniais kintamaisiais,
+# įvertintas REML metodu
+# ---------------------------------------------------------------------
+model.5reml <- update(model.5ml, method = "REML")
+summary(model.5reml)   # fiksuoti parametrai ir st. nuokrypiai
+VarCorr(model.5reml)   # dispersijos: tau00, tau11, sigma^2
 
 # Palyginimas su besąlyginiu modeliu
-sigma2_4 <- model.4reml$sigma^2
-(sigma2_0 - sigma2_4) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
-anova(model.4ml, model.0ml)                   # AIC ir tikėtinumo santykio testas (ML)
-AIC(model.0ml) - AIC(model.4ml)               # Akaikės indekso pokytis
+sigma2_5 <- model.5reml$sigma^2
+(sigma2_0 - sigma2_5) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
+anova(model.5ml, model.0ml)                   # AIC ir tikėtinumo santykio testas (ML)
+AIC(model.0ml) - AIC(model.5ml)               # Akaikės indekso pokytis
 # ---------------------------------------------------------------------
-# 7. Prielaidų tikrinimas – liekanų ir atsitiktinių efektų q-q grafikai
+# 8. Prielaidų tikrinimas – liekanų ir atsitiktinių efektų q-q grafikai
 # ---------------------------------------------------------------------
-qqnorm(model.4reml, ~ resid(.))      # I lygmens liekanos e
-qqnorm(model.4reml, ~ ranef(.))      # II lygmens u0 ir u1
+qqnorm(model.5reml, ~ resid(.))      # I lygmens liekanos e
+qqnorm(model.5reml, ~ ranef(.))      # II lygmens u0 ir u1
 
 # Homoskedastiškumas (ar liekanų sklaida vienoda prie visų kainų)
-plot(model.4reml, resid(., type = "pearson") ~ fitted(.), abline = 0,
+plot(model.5reml, resid(., type = "pearson") ~ fitted(.), abline = 0,
      main = "Liekanos vs Prognozuojamos reikšmės")
 
 
-hist(resid(model.4reml), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
-mean(abs(resid(model.4reml, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
-round(ranef(model.4reml), 3)
+hist(resid(model.5reml), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
+mean(abs(resid(model.5reml, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
+round(ranef(model.5reml), 3)
 
 
 
 
 # ==============================================================================
-# 8. PROGNOZĖ NAUDOJANT MODELĮ SU SĄVEIKA (model.4reml)
-# Scenarijus: 3 metų VW Golf, 30 tūkst. mylių rida, 55 mpg
+# 9. PROGNOZĖ NAUDOJANT GALUTINĮ MODELĮ (model.5reml)
+# Scenarijus: 3 metų VW Golf, 30 tūkst. mylių rida, 55 mpg, mechaninė dėžė, benzinas
 # ==============================================================================
 
 # 1. Paimame tikslią Golf vidutinio variklio reikšmę
@@ -145,12 +161,14 @@ naujas_golf <- data.frame(
   vid_variklis = vv_golf,
   amzius = 3,
   rida = 30,
-  mpg = 55
+  mpg = 55,
+  transmission = factor("Manual", levels = levels(duom$transmission)),
+  fuelType = factor("Petrol", levels = levels(duom$fuelType))
 )
 
 # 3. Skaičiuojame kainos prognozes svarais (£):
-prognoze_pop = exp(predict(model.4reml, naujas_golf, level = 0))  # Populiacijos lygis (level 0)
-prognoze_golf = exp(predict(model.4reml, naujas_golf, level = 1)) # Golf lygis (level 1)
+prognoze_pop = exp(predict(model.5reml, naujas_golf, level = 0))  # Populiacijos lygis (level 0)
+prognoze_golf = exp(predict(model.5reml, naujas_golf, level = 1)) # Golf lygis (level 1)
 
 cat("\n--- GOLF PROGNOZĖS REZULTATAI ---\n")
 cat("Bendras vidutinis automobilis rinkoje (level = 0):", round(prognoze_pop, 0), "£\n")
