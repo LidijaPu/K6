@@ -114,32 +114,21 @@ anova(model.3ml, model.0ml)                   # AIC ir tikėtinumo santykio test
 AIC(model.0ml) - AIC(model.3ml)               # Akaikės indekso pokytis
 
 # ---------------------------------------------------------------------
-# 8. Prielaidų tikrinimas – liekanų ir atsitiktinių efektų q-q grafikai
+# 8. Prielaidų tikrinimas: liekanų normalumas ir homoskedastiškumas
 # ---------------------------------------------------------------------
 qqnorm(model.3, ~ resid(.))      # I lygmens liekanos e
 qqnorm(model.3, ~ ranef(.))      # II lygmens u0 ir u1
-
-# Homoskedastiškumas (ar liekanų sklaida vienoda prie visų kainų)
 plot(model.3, resid(., type = "pearson") ~ fitted(.), abline = 0,
-     main = "Liekanos vs Prognozuojamos reikšmės")
-
-
+     main = "Liekanos vs prognozuojamos reikšmės")   # homoskedastiškumas
 hist(resid(model.3), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
 mean(abs(resid(model.3, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
-round(ranef(model.3), 3)
+round(ranef(model.3), 3)                          # kiekvieno modelio u0 ir u1
 
-
-
-
-# ==============================================================================
-# 9. PROGNOZĖ NAUDOJANT GALUTINĮ MODELĮ (model.3)
-# Scenarijus: 3 metų VW Golf, 30 tūkst. mylių rida, 55 mpg, mechaninė dėžė, benzinas
-# ==============================================================================
-
-# 1. Paimame tikslią Golf vidutinio variklio reikšmę
-vv_golf <- unique(duom$vid_variklis[duom$model == "Golf"])
-
-# 2. Sukuriame naujo automobilio duomenų eilutę
+# ---------------------------------------------------------------------
+# 9. Prognozė su galutiniu modeliu
+#    3 metų VW Golf, 30 tūkst. mylių rida, 55 mpg, mechaninė dėžė, benzinas
+# ---------------------------------------------------------------------
+vv_golf <- unique(duom$vid_variklis[duom$model == "Golf"])   # Golf vidutinis variklio tūris
 naujas_golf <- data.frame(
   model = factor("Golf", levels = levels(duom$model)),
   vid_variklis = vv_golf,
@@ -150,10 +139,5 @@ naujas_golf <- data.frame(
   fuelType = factor("Petrol", levels = levels(duom$fuelType))
 )
 
-# 3. Skaičiuojame kainos prognozes svarais (£):
-prognoze_pop = exp(predict(model.3, naujas_golf, level = 0))  # Populiacijos lygis (level 0)
-prognoze_golf = exp(predict(model.3, naujas_golf, level = 1)) # Golf lygis (level 1)
-
-cat("\n--- GOLF PROGNOZĖS REZULTATAI ---\n")
-cat("Bendras vidutinis automobilis rinkoje (level = 0):", round(prognoze_pop, 0), "£\n")
-cat("Konkrečiai VW GOLF prognozė (level = 1):", round(prognoze_golf, 0), "£\n")
+exp(predict(model.3, naujas_golf, level = 0))   # pagal fiksuotą dalį (level = 0), £
+exp(predict(model.3, naujas_golf, level = 1))   # su Golf atsitiktiniais efektais (level = 1), £
