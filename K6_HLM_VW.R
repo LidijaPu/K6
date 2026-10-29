@@ -58,97 +58,81 @@ round(cor(duom[, c("amzius", "rida", "mpg")]), 3)
 
 # ---------------------------------------------------------------------
 # 4. Dviejų lygmenų modelis
-#    I lygmuo: amzius, rida, mpg;  II lygmuo: vid_variklis
+#    I lygmuo: amzius, rida, mpg (intervaliniai), transmission, fuelType (kategoriniai)
+#    II lygmuo: vid_variklis
 #    Atsitiktinio poveikio: konstanta ir amzius
-# ---------------------------------------------------------------------
-ctrl <- lmeControl(opt = "optim", maxIter = 200, msMaxIter = 200)
-model.1 <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg,
-               random = ~ 1 + amzius | model, data = duom, control = ctrl)   # REML
-summary(model.1)        # fiksuoti parametrai (Fixed effects) ir st. nuokrypiai (Random effects)
-VarCorr(model.1)        # dispersijos: tau00, tau11, sigma^2
-
-# ---------------------------------------------------------------------
-# 5. Modelių palyginimas su besąlyginiu
-# ---------------------------------------------------------------------
-sigma2_1 <- model.1$sigma^2
-(sigma2_0 - sigma2_1) / sigma2_0      # I lygmens dispersijos sąlyginis pokytis
-
-model.0ml <- update(model.0, method = "ML")   # palyginimui – ML įverčiai
-model.1ml <- update(model.1, method = "ML")
-anova(model.1ml, model.0ml)                   # AIC ir tikėtinumo santykio testas
-AIC(model.0ml) - AIC(model.1ml)               # Akaikės indekso pokytis
-
-# Ar reikalingas atsitiktinis amžiaus nuolydis?
-model.1a <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg,
-                random = ~ 1 | model, data = duom, method = "ML")
-anova(model.1ml, model.1a)
-
-# ---------------------------------------------------------------------
-# 6. Modeliai su sąveika
-# ---------------------------------------------------------------------
-# SĄVEIKA 1: vid_variklis ir amzius
-# Klausimas: ar didesnio variklio modeliai nuvertėja greičiau?
-model.2ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:amzius,
-                 random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
-summary(model.2ml)$tTable
-anova(model.1ml, model.2ml)      # p = 0,153 – sąveika nereikalinga
-
-# SĄVEIKA 2: vid_variklis ir mpg
-# Klausimas: ar variklio dydis keičia degalų sąnaudų (ekonomiškumo) įtaką?
-model.4ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:mpg,
-                 random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
-
-summary(model.4ml)$tTable
-anova(model.1ml, model.4ml)      # p = 0,0007 – modelis su sąveika statistiškai reikšmingai geresnis
-
-# ---------------------------------------------------------------------
-# 7. Modelis su kategoriniais kintamaisiais (pavarų dėžė ir kuro tipas)
-#    R automatiškai sukuria pseudokintamuosius:
-#    bazinės kategorijos – Automatic ir Diesel
+#    Kategoriniams kintamiesiems R automatiškai sukuria pseudokintamuosius
+#    (bazinės kategorijos – Automatic ir Diesel)
 # ---------------------------------------------------------------------
 duom$transmission <- factor(duom$transmission)   # Automatic, Manual, Semi-Auto
 duom$fuelType <- factor(duom$fuelType)           # Diesel, Petrol
 table(duom$transmission); table(duom$fuelType)
 
-model.5ml <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + vid_variklis:mpg +
-                   transmission + fuelType,
-                 random = ~ 1 + amzius | model, data = duom, method = "ML", control = ctrl)
-summary(model.5ml)$tTable
-anova(model.4ml, model.5ml)      # AIC sumažėja ~2454 – kategoriniai kintamieji reikalingi
+ctrl <- lmeControl(opt = "optim", maxIter = 200, msMaxIter = 200)
+model.1 <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + transmission + fuelType,
+               random = ~ 1 + amzius | model, data = duom, control = ctrl)   # REML
+summary(model.1)        # fiksuoti parametrai (Fixed effects) ir st. nuokrypiai (Random effects)
+VarCorr(model.1)        # dispersijos: tau00, tau11, sigma^2
+
+model.0ml <- update(model.0, method = "ML")   # modelių palyginimui – ML įverčiai
+model.1ml <- update(model.1, method = "ML")
+
+# Ar reikalingas atsitiktinis amžiaus nuolydis?
+model.1a <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + transmission + fuelType,
+                random = ~ 1 | model, data = duom, method = "ML", control = ctrl)
+anova(model.1ml, model.1a)       # p < 0,0001 – atsitiktinis nuolydis reikalingas
 
 # ---------------------------------------------------------------------
-# GALUTINIS MODELIS: su sąveika vid_variklis:mpg ir kategoriniais kintamaisiais,
-# įvertintas REML metodu
+# 5. Modeliai su sąveika (II lygmens kintamasis × I lygmens kintamasis)
 # ---------------------------------------------------------------------
-model.5reml <- update(model.5ml, method = "REML")
-summary(model.5reml)   # fiksuoti parametrai ir st. nuokrypiai
-VarCorr(model.5reml)   # dispersijos: tau00, tau11, sigma^2
+# SĄVEIKA 1: vid_variklis ir amzius
+# Klausimas: ar didesnio variklio modeliai nuvertėja greičiau?
+model.2ml <- update(model.1ml, . ~ . + vid_variklis:amzius)
+summary(model.2ml)$tTable
+anova(model.1ml, model.2ml)      # sąveika nereikšminga – nereikalinga
 
-# Palyginimas su besąlyginiu modeliu
-sigma2_5 <- model.5reml$sigma^2
-(sigma2_0 - sigma2_5) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
-anova(model.5ml, model.0ml)                   # AIC ir tikėtinumo santykio testas (ML)
-AIC(model.0ml) - AIC(model.5ml)               # Akaikės indekso pokytis
+# SĄVEIKA 2: vid_variklis ir mpg
+# Klausimas: ar variklio dydis keičia degalų sąnaudų (ekonomiškumo) įtaką?
+model.3ml <- update(model.1ml, . ~ . + vid_variklis:mpg)
+summary(model.3ml)$tTable
+anova(model.1ml, model.3ml)      # sąveika reikšminga, AIC sumažėja daugiau nei 10
+AIC(model.1ml) - AIC(model.3ml)
+
+# ---------------------------------------------------------------------
+# 6. GALUTINIS MODELIS: su sąveika vid_variklis:mpg, įvertintas REML metodu
+# ---------------------------------------------------------------------
+model.3 <- update(model.3ml, method = "REML")
+summary(model.3)       # fiksuoti parametrai ir st. nuokrypiai
+VarCorr(model.3)       # dispersijos: tau00, tau11, sigma^2
+
+# ---------------------------------------------------------------------
+# 7. Galutinio modelio palyginimas su besąlyginiu
+# ---------------------------------------------------------------------
+sigma2_3 <- model.3$sigma^2
+(sigma2_0 - sigma2_3) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
+anova(model.3ml, model.0ml)                   # AIC ir tikėtinumo santykio testas (ML)
+AIC(model.0ml) - AIC(model.3ml)               # Akaikės indekso pokytis
+
 # ---------------------------------------------------------------------
 # 8. Prielaidų tikrinimas – liekanų ir atsitiktinių efektų q-q grafikai
 # ---------------------------------------------------------------------
-qqnorm(model.5reml, ~ resid(.))      # I lygmens liekanos e
-qqnorm(model.5reml, ~ ranef(.))      # II lygmens u0 ir u1
+qqnorm(model.3, ~ resid(.))      # I lygmens liekanos e
+qqnorm(model.3, ~ ranef(.))      # II lygmens u0 ir u1
 
 # Homoskedastiškumas (ar liekanų sklaida vienoda prie visų kainų)
-plot(model.5reml, resid(., type = "pearson") ~ fitted(.), abline = 0,
+plot(model.3, resid(., type = "pearson") ~ fitted(.), abline = 0,
      main = "Liekanos vs Prognozuojamos reikšmės")
 
 
-hist(resid(model.5reml), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
-mean(abs(resid(model.5reml, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
-round(ranef(model.5reml), 3)
+hist(resid(model.3), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
+mean(abs(resid(model.3, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
+round(ranef(model.3), 3)
 
 
 
 
 # ==============================================================================
-# 9. PROGNOZĖ NAUDOJANT GALUTINĮ MODELĮ (model.5reml)
+# 9. PROGNOZĖ NAUDOJANT GALUTINĮ MODELĮ (model.3)
 # Scenarijus: 3 metų VW Golf, 30 tūkst. mylių rida, 55 mpg, mechaninė dėžė, benzinas
 # ==============================================================================
 
@@ -167,8 +151,8 @@ naujas_golf <- data.frame(
 )
 
 # 3. Skaičiuojame kainos prognozes svarais (£):
-prognoze_pop = exp(predict(model.5reml, naujas_golf, level = 0))  # Populiacijos lygis (level 0)
-prognoze_golf = exp(predict(model.5reml, naujas_golf, level = 1)) # Golf lygis (level 1)
+prognoze_pop = exp(predict(model.3, naujas_golf, level = 0))  # Populiacijos lygis (level 0)
+prognoze_golf = exp(predict(model.3, naujas_golf, level = 1)) # Golf lygis (level 1)
 
 cat("\n--- GOLF PROGNOZĖS REZULTATAI ---\n")
 cat("Bendras vidutinis automobilis rinkoje (level = 0):", round(prognoze_pop, 0), "£\n")
