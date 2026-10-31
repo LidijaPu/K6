@@ -91,38 +91,37 @@ model.2ml <- update(model.1ml, . ~ . + vid_variklis:amzius)
 summary(model.2ml)$tTable
 anova(model.1ml, model.2ml)      # sąveika nereikšminga – nereikalinga
 
-# SĄVEIKA 2: vid_variklis ir mpg
-# Klausimas: ar variklio dydis keičia degalų sąnaudų (ekonomiškumo) įtaką?
-model.3ml <- update(model.1ml, . ~ . + vid_variklis:mpg)
+# SĄVEIKA 2: vid_variklis ir rida
+# Klausimas: ar didesnio variklio modeliams rida kainą veikia kitaip?
+model.3ml <- update(model.1ml, . ~ . + vid_variklis:rida)
 summary(model.3ml)$tTable
-anova(model.1ml, model.3ml)      # sąveika reikšminga, AIC sumažėja daugiau nei 10
-AIC(model.1ml) - AIC(model.3ml)
+anova(model.1ml, model.3ml)      # sąveika nereikšminga – nereikalinga
 
 # ---------------------------------------------------------------------
-# 6. GALUTINIS MODELIS: su sąveika vid_variklis:mpg, įvertintas REML metodu
+# 6. GALUTINIS MODELIS: dviejų lygmenų modelis be sąveikų (model.1, REML)
+#    Abi sąveikos nereikšmingos, todėl renkamės paprastesnį modelį
 # ---------------------------------------------------------------------
-model.3 <- update(model.3ml, method = "REML")
-summary(model.3)       # fiksuoti parametrai ir st. nuokrypiai
-VarCorr(model.3)       # dispersijos: tau00, tau11, sigma^2
+summary(model.1)       # fiksuoti parametrai ir st. nuokrypiai
+VarCorr(model.1)       # dispersijos: tau00, tau11, sigma^2
 
 # ---------------------------------------------------------------------
 # 7. Galutinio modelio palyginimas su besąlyginiu
 # ---------------------------------------------------------------------
-sigma2_3 <- model.3$sigma^2
-(sigma2_0 - sigma2_3) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
-anova(model.3ml, model.0ml)                   # AIC ir tikėtinumo santykio testas (ML)
-AIC(model.0ml) - AIC(model.3ml)               # Akaikės indekso pokytis
+sigma2_1 <- model.1$sigma^2
+(sigma2_0 - sigma2_1) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
+anova(model.1ml, model.0ml)                   # AIC ir tikėtinumo santykio testas (ML)
+AIC(model.0ml) - AIC(model.1ml)               # Akaikės indekso pokytis
 
 # ---------------------------------------------------------------------
 # 8. Prielaidų tikrinimas: liekanų normalumas ir homoskedastiškumas
 # ---------------------------------------------------------------------
-qqnorm(model.3, ~ resid(.))      # I lygmens liekanos e
-qqnorm(model.3, ~ ranef(.))      # II lygmens u0 ir u1
-plot(model.3, resid(., type = "pearson") ~ fitted(.), abline = 0,
+qqnorm(model.1, ~ resid(.))      # I lygmens liekanos e
+qqnorm(model.1, ~ ranef(.))      # II lygmens u0 ir u1
+plot(model.1, resid(., type = "pearson") ~ fitted(.), abline = 0,
      main = "Liekanos vs prognozuojamos reikšmės")   # homoskedastiškumas
-hist(resid(model.3), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
-mean(abs(resid(model.3, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
-round(ranef(model.3), 3)                          # kiekvieno modelio u0 ir u1
+hist(resid(model.1), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
+mean(abs(resid(model.1, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
+round(ranef(model.1), 3)                          # kiekvieno modelio u0 ir u1
 
 # ---------------------------------------------------------------------
 # 9. Prognozė su galutiniu modeliu
@@ -139,5 +138,5 @@ naujas_golf <- data.frame(
   fuelType = factor("Petrol", levels = levels(duom$fuelType))
 )
 
-exp(predict(model.3, naujas_golf, level = 0))   # pagal fiksuotą dalį (level = 0), £
-exp(predict(model.3, naujas_golf, level = 1))   # su Golf atsitiktiniais efektais (level = 1), £
+exp(predict(model.1, naujas_golf, level = 0))   # pagal fiksuotą dalį (level = 0), £
+exp(predict(model.1, naujas_golf, level = 1))   # su Golf atsitiktiniais efektais (level = 1), £
