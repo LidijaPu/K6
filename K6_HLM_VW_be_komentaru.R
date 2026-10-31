@@ -25,10 +25,10 @@ nlevels(duom$model)
 sort(table(duom$model))
 
 ggplot(duom, aes(x = price)) +
-  geom_histogram(bins = 30, fill = "#69b3a2", color = "white") +
+  geom_histogram(bins = 30, fill = "#7A003B", color = "white") +
   labs(title = "Priklausomo kintamojo histograma", x = "kaina", y = "Dažnis")
 ggplot(duom, aes(x = lkaina)) +
-  geom_histogram(bins = 30, fill = "#69b3a2", color = "white") +
+  geom_histogram(bins = 30, fill = "#7A003B", color = "white") +
   labs(title = "Priklausomo kintamojo histograma", x = "log(kaina)", y = "Dažnis")
 set.seed(2026)
 shapiro.test(sample(duom$lkaina, 5000))
@@ -75,11 +75,12 @@ sigma2_1 <- model.1$sigma^2
 AIC(model.0ml, model.1ml)
 AIC(model.0ml) - AIC(model.1ml)
 
-qqnorm(model.1, ~ resid(.))
-qqnorm(model.1, ~ ranef(.))
-plot(model.1, resid(., type = "pearson") ~ fitted(.), abline = 0,
+qqnorm(model.1, ~ resid(., type = "p"), abline = c(0, 1), col = "#7A003B")
+qqnorm(model.1, ~ ranef(.), col = "#7A003B")
+plot(model.1, resid(., type = "pearson") ~ fitted(.), abline = 0, col = "#7A003B",
      main = "Liekanos vs prognozuojamos reikšmės")
-hist(resid(model.1), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
+hist(resid(model.1), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos",
+     col = "#7A003B", border = "white")
 mean(abs(resid(model.1, type = "pearson")) > 3)
 round(ranef(model.1), 3)
 

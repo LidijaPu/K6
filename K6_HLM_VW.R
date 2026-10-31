@@ -39,10 +39,10 @@ sort(table(duom$model))
 # 1. Priklausomo kintamojo normalumas
 # ---------------------------------------------------------------------
 ggplot(duom, aes(x = price)) +
-  geom_histogram(bins = 30, fill = "#69b3a2", color = "white") +
+  geom_histogram(bins = 30, fill = "#7A003B", color = "white") +
   labs(title = "Priklausomo kintamojo histograma", x = "kaina", y = "Dažnis")
 ggplot(duom, aes(x = lkaina)) +
-  geom_histogram(bins = 30, fill = "#69b3a2", color = "white") +
+  geom_histogram(bins = 30, fill = "#7A003B", color = "white") +
   labs(title = "Priklausomo kintamojo histograma", x = "log(kaina)", y = "Dažnis")
 set.seed(2026)
 shapiro.test(sample(duom$lkaina, 5000))   # shapiro.test leidžia iki 5000 stebėjimų – atsitiktinė imtis
@@ -121,11 +121,12 @@ AIC(model.0ml) - AIC(model.1ml)               # Akaikės indekso pokytis
 # ---------------------------------------------------------------------
 # 8. Prielaidų tikrinimas: liekanų normalumas ir homoskedastiškumas
 # ---------------------------------------------------------------------
-qqnorm(model.1, ~ resid(.))      # I lygmens liekanos e
-qqnorm(model.1, ~ ranef(.))      # II lygmens u0 ir u1
-plot(model.1, resid(., type = "pearson") ~ fitted(.), abline = 0,
+qqnorm(model.1, ~ resid(., type = "p"), abline = c(0, 1), col = "#7A003B")      # I lygmens liekanos e
+qqnorm(model.1, ~ ranef(.), col = "#7A003B")      # II lygmens u0 ir u1
+plot(model.1, resid(., type = "pearson") ~ fitted(.), abline = 0, col = "#7A003B",
      main = "Liekanos vs prognozuojamos reikšmės")   # homoskedastiškumas
-hist(resid(model.1), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos")
+hist(resid(model.1), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos",
+     col = "#7A003B", border = "white")
 mean(abs(resid(model.1, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
 round(ranef(model.1), 3)                          # kiekvieno modelio u0 ir u1
 
