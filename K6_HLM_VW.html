@@ -1737,8 +1737,11 @@ kintamųjų koreliacijos</h1>
 ## mpg     0.397 0.404 1.000</code></pre>
 <p>Stipriausiai koreliuoja amžius ir rida (r = 0,763): senesni
 automobiliai daugiau nuvažiavę. Koreliacija mažesnė už 0,8, todėl abu
-kintamieji paliekami. mpg su kitais koreliuoja vidutiniškai (≈
-0,40).</p>
+kintamieji paliekami. mpg su kitais koreliuoja vidutiniškai (≈ 0,40).
+Teigiama amžiaus ir mpg koreliacija (0,397) paaiškinama matavimo
+metodika: nuo 2017–2018 m. mpg nustatomas pagal griežtesnį WLTP
+standartą, kuris duoda mažesnį mpg nei senasis NEDC (2016–2017 m.
+automobilių vidutinis mpg ≈ 58, 2019–2020 m. ≈ 46).</p>
 </div>
 <div id="dviejų-lygmenų-modelis" class="section level1" number="5">
 <h1><span class="header-section-number">5</span> Dviejų lygmenų
@@ -1990,15 +1993,16 @@ effects</em> (StdDev²): τ̂00 = 0,3310² = 0,1096; τ̂11 = 0,0263² = 0,00069
 0,321·vid_variklis − 0,0906·amzius − 0,00468·rida − 0,00710·mpg −
 0,109·Manual + 0,0130·SemiAuto − 0,0941·Petrol] + [u0 + u1·amzius +
 u2·rida + u3·mpg + e]</p>
-<p>Kadangi Y = log(kaina), poveikis procentais = (e^koef − 1)·100:
-kiekvieni metai sumažina kainą apie 8,7 %, 1000 mylių ridos – apie 0,47
-%, +1 mpg – apie 0,71 %. Mechaninė dėžė apie 10,3 % pigesnė, Semi-Auto
-apie 1,3 % brangesnė nei automatinė; benzininis automobilis apie 9,0 %
-pigesnis nei dyzelinis. Modelis su 1 l didesniu vidutiniu varikliu apie
-38 % brangesnis. Amžiaus nuolydžio st. nuokrypis 0,026 – modeliai
-nuvertėja nevienodai (T-Roc ≈ 3,9 %, Beetle ≈ 13,4 % per metus);
-atsitiktiniai ridos ir mpg nuolydžiai rodo, kad ir šių kintamųjų
-poveikis skirtingiems modeliams nevienodas.</p>
+<p>Kadangi Y = log(kaina), poveikis procentais = (e^γ − 1)·100, kai kiti
+kintamieji nesikeičia: kiekvieni metai sumažina kainą apie 8,7 %, 1000
+mylių ridos – apie 0,47 %, +1 mpg (ekonomiškesnis automobilis) – apie
+0,71 %. Mechaninė dėžė apie 10,3 % pigesnė, Semi-Auto apie 1,3 %
+brangesnė nei automatinė; benzininis automobilis apie 9,0 % pigesnis nei
+dyzelinis. Modelis su 1 l didesniu vidutiniu varikliu apie 38 %
+brangesnis. Amžiaus nuolydžio st. nuokrypis 0,026 – modeliai nuvertėja
+nevienodai (T-Roc ≈ 3,9 %, Beetle ≈ 13,4 % per metus); atsitiktiniai
+ridos ir mpg nuolydžiai rodo, kad ir šių kintamųjų poveikis skirtingiems
+modeliams nevienodas.</p>
 <p><strong>I lygmens dispersijos sąlyginis pokytis</strong> = (0,1078 −
 0,0179) / 0,1078 = <strong>0,834</strong>: lyginant su besąlyginiu
 modeliu, 83,4 % sumažėjo modeliu nepaaiškintų kainų skirtumų.

@@ -113,7 +113,7 @@ H0: γ00 = 0 neatmetama (p = 0,181) – centruotų duomenų modelių vidurkis st
 round(cor(duom[, c("amzius", "rida", "mpg")]), 3)
 ```
 
-Stipriausiai koreliuoja amžius ir rida (r = 0,763): senesni automobiliai daugiau nuvažiavę. Koreliacija mažesnė už 0,8, todėl abu kintamieji paliekami. mpg su kitais koreliuoja vidutiniškai (≈ 0,40).
+Stipriausiai koreliuoja amžius ir rida (r = 0,763): senesni automobiliai daugiau nuvažiavę. Koreliacija mažesnė už 0,8, todėl abu kintamieji paliekami. mpg su kitais koreliuoja vidutiniškai (≈ 0,40). Teigiama amžiaus ir mpg koreliacija (0,397) paaiškinama matavimo metodika: nuo 2017–2018 m. mpg nustatomas pagal griežtesnį WLTP standartą, kuris duoda mažesnį mpg nei senasis NEDC (2016–2017 m. automobilių vidutinis mpg ≈ 58, 2019–2020 m. ≈ 46).
 
 # Dviejų lygmenų modelis
 
@@ -193,7 +193,7 @@ Iš *Fixed effects* (Value): γ̂00 = 9,959; γ̂01 = 0,321; γ̂10 = −0,0906;
 **Jungtinė lygtis su įverčiais:**
 lkaina = [9,959 + 0,321·vid_variklis − 0,0906·amzius − 0,00468·rida − 0,00710·mpg − 0,109·Manual + 0,0130·SemiAuto − 0,0941·Petrol] + [u0 + u1·amzius + u2·rida + u3·mpg + e]
 
-Kadangi Y = log(kaina), poveikis procentais = (e^koef − 1)·100: kiekvieni metai sumažina kainą apie 8,7 %, 1000 mylių ridos – apie 0,47 %, +1 mpg – apie 0,71 %. Mechaninė dėžė apie 10,3 % pigesnė, Semi-Auto apie 1,3 % brangesnė nei automatinė; benzininis automobilis apie 9,0 % pigesnis nei dyzelinis. Modelis su 1 l didesniu vidutiniu varikliu apie 38 % brangesnis. Amžiaus nuolydžio st. nuokrypis 0,026 – modeliai nuvertėja nevienodai (T-Roc ≈ 3,9 %, Beetle ≈ 13,4 % per metus); atsitiktiniai ridos ir mpg nuolydžiai rodo, kad ir šių kintamųjų poveikis skirtingiems modeliams nevienodas.
+Kadangi Y = log(kaina), poveikis procentais = (e^γ − 1)·100, kai kiti kintamieji nesikeičia: kiekvieni metai sumažina kainą apie 8,7 %, 1000 mylių ridos – apie 0,47 %, +1 mpg (ekonomiškesnis automobilis) – apie 0,71 %. Mechaninė dėžė apie 10,3 % pigesnė, Semi-Auto apie 1,3 % brangesnė nei automatinė; benzininis automobilis apie 9,0 % pigesnis nei dyzelinis. Modelis su 1 l didesniu vidutiniu varikliu apie 38 % brangesnis. Amžiaus nuolydžio st. nuokrypis 0,026 – modeliai nuvertėja nevienodai (T-Roc ≈ 3,9 %, Beetle ≈ 13,4 % per metus); atsitiktiniai ridos ir mpg nuolydžiai rodo, kad ir šių kintamųjų poveikis skirtingiems modeliams nevienodas.
 
 **I lygmens dispersijos sąlyginis pokytis** = (0,1078 − 0,0179) / 0,1078 = **0,834**: lyginant su besąlyginiu modeliu, 83,4 % sumažėjo modeliu nepaaiškintų kainų skirtumų. **Akaikės indekso pokytis** (`AIC(model.0ml, model.1ml)`): 9 203,80 → −17 283,91, t. y. sumažėjo **26 488** vienetais (> 10) – galutinis modelis daug geresnis. (`anova()` čia netinka, nes besąlyginis modelis sudarytas centruotai priklausomai kintamajai, todėl lyginame AIC.)
 
