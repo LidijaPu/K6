@@ -1951,6 +1951,9 @@ sąveikų (model.1).</strong></p>
 <pre class="r"><code>sigma2_1 &lt;- model.1$sigma^2
 (sigma2_0 - sigma2_1) / sigma2_0   # I lygmens dispersijos sąlyginis pokytis</code></pre>
 <pre><code>## [1] 0.8241098</code></pre>
+<pre class="r"><code>tau00_1 &lt;- as.numeric(VarCorr(model.1)[1, &quot;Variance&quot;])
+(tau00 - tau00_1) / tau00          # II lygmens dispersijos tau00 sąlyginis pokytis</code></pre>
+<pre><code>## [1] 0.8499317</code></pre>
 <pre class="r"><code>AIC(model.0ml, model.1ml)</code></pre>
 <pre><code>##           df       AIC
 ## model.0ml  3   9203.80
@@ -1974,13 +1977,17 @@ brangesnis. Amžiaus nuolydžio st. nuokrypis 0,025 – modeliai nuvertėja
 nevienodai (Caravelle ≈ 5,4 %, Beetle ≈ 13,2 % per metus).</p>
 <p><strong>I lygmens dispersijos sąlyginis pokytis</strong> = (0,1078 −
 0,0190) / 0,1078 = <strong>0,824</strong>: lyginant su besąlyginiu
-modeliu, 82,4 % sumažėjo modeliu nepaaiškintų kainų skirtumų.
-<strong>Akaikės indekso pokytis</strong>
-(<code>AIC(model.0ml, model.1ml)</code>): 9 203,80 → −16 554,14, t. y.
-sumažėjo <strong>25 758</strong> vienetais (&gt; 10) – galutinis modelis
-daug geresnis. (<code>anova()</code> čia netinka, nes besąlyginis
-modelis sudarytas centruotai priklausomai kintamajai, todėl lyginame
-AIC.)</p>
+modeliu, 82,4 % sumažėjo modeliu nepaaiškintų kainų skirtumų. <strong>II
+lygmens dispersijos τ00 sąlyginis pokytis</strong> = (0,2036 − 0,0306) /
+0,2036 = <strong>0,850</strong>: skirtumai tarp modelių kainų lygių,
+kurių nepaaiškina kintamieji, sumažėjo 85,0 % (daugiausia dėl
+vid_variklis). τ̂11 = 0,00063 ir kovariacija τ̂01 = −0,00088 besąlyginiame
+modelyje nebuvo, todėl jų pokyčio neskaičiuojame. <strong>Akaikės
+indekso pokytis</strong> (<code>AIC(model.0ml, model.1ml)</code>): 9
+203,80 → −16 554,14, t. y. sumažėjo <strong>25 758</strong> vienetais
+(&gt; 10) – galutinis modelis daug geresnis. (<code>anova()</code> čia
+netinka, nes besąlyginis modelis sudarytas centruotai priklausomai
+kintamajai, todėl lyginame AIC.)</p>
 </div>
 <div id="prielaidų-tikrinimas" class="section level1" number="9">
 <h1><span class="header-section-number">9</span> Prielaidų

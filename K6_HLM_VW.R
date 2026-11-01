@@ -117,6 +117,8 @@ getVarCov(model.1)     # tau kovariacija tau01
 # ---------------------------------------------------------------------
 sigma2_1 <- model.1$sigma^2
 (sigma2_0 - sigma2_1) / sigma2_0              # I lygmens dispersijos sąlyginis pokytis
+tau00_1 <- as.numeric(VarCorr(model.1)[1, "Variance"])
+(tau00 - tau00_1) / tau00                     # II lygmens dispersijos tau00 sąlyginis pokytis
 AIC(model.0ml, model.1ml)                     # anova() netinka – model.0 sudarytas centruotai priklausomai kintamajai
 AIC(model.0ml) - AIC(model.1ml)               # Akaikės indekso pokytis
 

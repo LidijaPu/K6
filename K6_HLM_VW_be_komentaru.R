@@ -74,6 +74,8 @@ getVarCov(model.1)
 
 sigma2_1 <- model.1$sigma^2
 (sigma2_0 - sigma2_1) / sigma2_0
+tau00_1 <- as.numeric(VarCorr(model.1)[1, "Variance"])
+(tau00 - tau00_1) / tau00
 AIC(model.0ml, model.1ml)
 AIC(model.0ml) - AIC(model.1ml)
 
