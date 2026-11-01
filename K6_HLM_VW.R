@@ -68,27 +68,24 @@ round(cor(duom[, c("amzius", "rida", "mpg")]), 3)
 # 4. Dviejų lygmenų modelis
 #    I lygmuo: amzius, rida, mpg (intervaliniai), transmission, fuelType (kategoriniai)
 #    II lygmuo: vid_variklis
-#    Atsitiktinio poveikio: konstanta, amzius, rida ir mpg
+#    Atsitiktinio poveikio: konstanta ir amzius
 #    Kategoriniams kintamiesiems R automatiškai sukuria pseudokintamuosius
 #    (bazinės kategorijos – Automatic ir Diesel)
 # ---------------------------------------------------------------------
-ctrl <- lmeControl(opt = "optim", maxIter = 500, msMaxIter = 500)
+ctrl <- lmeControl(opt = "optim", maxIter = 200, msMaxIter = 200)
 model.1 <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + transmission + fuelType,
-               random = ~ 1 + amzius + rida + mpg | model, data = duom, control = ctrl)   # REML
+               random = ~ 1 + amzius | model, data = duom, control = ctrl)   # REML
 summary(model.1)        # fiksuoti parametrai (Fixed effects) ir st. nuokrypiai (Random effects)
-VarCorr(model.1)        # dispersijos: tau00, tau11, tau22, tau33, sigma^2
-getVarCov(model.1)      # tau matrica su kovariacijomis (tau01, tau02, ...)
+VarCorr(model.1)        # dispersijos: tau00, tau11, sigma^2
+getVarCov(model.1)      # tau matrica su kovariacija tau01
 
 model.0ml <- update(model.0, method = "ML")   # modelių palyginimui – ML įverčiai
 model.1ml <- update(model.1, method = "ML")
 
-# Ar reikalingi atsitiktiniai nuolydžiai? (lyginame modelius be vieno iš jų)
-model.1a <- update(model.1ml, random = ~ 1 + rida + mpg | model)     # be atsitiktinio amzius nuolydžio
-anova(model.1ml, model.1a)       # p < 0,0001 – atsitiktinis amzius nuolydis reikalingas
-model.1b <- update(model.1ml, random = ~ 1 + amzius + mpg | model)   # be atsitiktinio rida nuolydžio
-anova(model.1ml, model.1b)       # p < 0,0001 – atsitiktinis rida nuolydis reikalingas
-model.1c <- update(model.1ml, random = ~ 1 + amzius + rida | model)  # be atsitiktinio mpg nuolydžio
-anova(model.1ml, model.1c)       # p < 0,0001 – atsitiktinis mpg nuolydis reikalingas
+# Ar reikalingas atsitiktinis amžiaus nuolydis?
+model.1a <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + transmission + fuelType,
+                random = ~ 1 | model, data = duom, method = "ML", control = ctrl)
+anova(model.1ml, model.1a)       # p < 0,0001 – atsitiktinis nuolydis reikalingas
 AIC(model.0ml)
 AIC(model.1ml)
 
@@ -112,8 +109,8 @@ anova(model.1ml, model.3ml)      # sąveika nereikšminga – nereikalinga
 #    Abi sąveikos nereikšmingos, todėl renkamės paprastesnį modelį
 # ---------------------------------------------------------------------
 summary(model.1)       # fiksuoti parametrai ir st. nuokrypiai
-VarCorr(model.1)       # dispersijos: tau00, tau11, tau22, tau33, sigma^2
-getVarCov(model.1)     # tau kovariacijos
+VarCorr(model.1)       # dispersijos: tau00, tau11, sigma^2
+getVarCov(model.1)     # tau kovariacija tau01
 
 # ---------------------------------------------------------------------
 # 7. Galutinio modelio palyginimas su besąlyginiu
@@ -127,13 +124,13 @@ AIC(model.0ml) - AIC(model.1ml)               # Akaikės indekso pokytis
 # 8. Prielaidų tikrinimas: liekanų normalumas ir homoskedastiškumas
 # ---------------------------------------------------------------------
 qqnorm(model.1, ~ resid(., type = "p"), abline = c(0, 1), col = "#7A003B")      # I lygmens liekanos e
-qqnorm(model.1, ~ ranef(.), col = "#7A003B")      # II lygmens u0, u1, u2, u3
+qqnorm(model.1, ~ ranef(.), col = "#7A003B")      # II lygmens u0 ir u1
 plot(model.1, resid(., type = "pearson") ~ fitted(.), abline = 0, col = "#7A003B",
      main = "Liekanos vs prognozuojamos reikšmės")   # homoskedastiškumas
 hist(resid(model.1), breaks = 80, main = "I lygmens liekanų histograma", xlab = "Liekanos",
      col = "#7A003B", border = "white")
 mean(abs(resid(model.1, type = "pearson")) > 3)   # dalis liekanų, didesnių nei 3 st. nuokrypiai
-round(ranef(model.1), 3)                          # kiekvieno modelio u0, u1, u2, u3
+round(ranef(model.1), 3)                          # kiekvieno modelio u0 ir u1
 
 # ---------------------------------------------------------------------
 # 9. Prognozė su galutiniu modeliu

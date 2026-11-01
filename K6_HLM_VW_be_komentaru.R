@@ -44,9 +44,9 @@ intervals(model.0)
 
 round(cor(duom[, c("amzius", "rida", "mpg")]), 3)
 
-ctrl <- lmeControl(opt = "optim", maxIter = 500, msMaxIter = 500)
+ctrl <- lmeControl(opt = "optim", maxIter = 200, msMaxIter = 200)
 model.1 <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + transmission + fuelType,
-               random = ~ 1 + amzius + rida + mpg | model, data = duom, control = ctrl)
+               random = ~ 1 + amzius | model, data = duom, control = ctrl)
 summary(model.1)
 VarCorr(model.1)
 getVarCov(model.1)
@@ -54,12 +54,9 @@ getVarCov(model.1)
 model.0ml <- update(model.0, method = "ML")
 model.1ml <- update(model.1, method = "ML")
 
-model.1a <- update(model.1ml, random = ~ 1 + rida + mpg | model)
+model.1a <- lme(lkaina ~ 1 + vid_variklis + amzius + rida + mpg + transmission + fuelType,
+                random = ~ 1 | model, data = duom, method = "ML", control = ctrl)
 anova(model.1ml, model.1a)
-model.1b <- update(model.1ml, random = ~ 1 + amzius + mpg | model)
-anova(model.1ml, model.1b)
-model.1c <- update(model.1ml, random = ~ 1 + amzius + rida | model)
-anova(model.1ml, model.1c)
 AIC(model.0ml)
 AIC(model.1ml)
 
